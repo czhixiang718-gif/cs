@@ -1,0 +1,173 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>公司项目台账报表预览</title>
+  <style>
+    body { font-family: Segoe UI, Arial; margin: 20px; }
+    h1 { margin-top: 0; }
+    section { margin-bottom: 24px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; }
+    th { background: #f5f5f5; text-align: left; }
+    .error { color: #b00020; }
+  </style>
+</head>
+<body>
+  <h1>公司项目台账报表预览</h1>
+  <p><a href="manage.html">进入后台管理页面</a></p>
+
+  <div id="content"></div>
+
+  <script>
+    const reports = [
+      { api: '/api/report/global_finance_totals', title: '全量合计' },
+      { api: '/api/report/project_finance_summary', title: '项目汇总明细' },
+      { api: '/api/report/monthly_contracts', title: '月签约' },
+      { api: '/api/report/monthly_payments', title: '月回款' },
+      { api: '/api/report/quarterly_contracts', title: '季度签约' },
+      { api: '/api/report/quarterly_payments', title: '季度回款' },
+      { api: '/api/report/yearly_contracts', title: '年度签约' },
+      { api: '/api/report/yearly_payments', title: '年度回款' },
+      { api: '/api/report/overdue_projects_90d', title: '逾期未回款>90天' },
+    ];
+
+    const headerMap = {
+      'global_finance_totals.csv': {
+        total_projects: '项目总数',
+        total_price_all_projects: '所有项目合计总价',
+        total_outstanding_all_projects: '所有合计未回款总价',
+        total_payments_amount: '回款总额',
+        total_payments_count: '回款笔数'
+      },
+      'project_finance_summary.csv': {
+        project_id: '项目ID',
+        name: '项目名称',
+        contract_date: '签约时间',
+        total_price: '总价',
+        payment_count: '回款笔数',
+        payment_total_amount: '回款总额',
+        outstanding_amount: '未回款总额'
+      },
+      'monthly_contracts.csv': {
+        ym: '年月',
+        project_count: '项目数',
+        contract_amount: '签约金额'
+      },
+      'monthly_payments.csv': {
+        ym: '年月',
+        payment_count: '回款笔数',
+        payment_amount: '回款金额'
+      },
+      'quarterly_contracts.csv': {
+        yq: '季度',
+        project_count: '项目数',
+        contract_amount: '签约金额'
+      },
+      'quarterly_payments.csv': {
+        yq: '季度',
+        payment_count: '回款笔数',
+        payment_amount: '回款金额'
+      },
+      'yearly_contracts.csv': {
+        yr: '年份',
+        project_count: '项目数',
+        contract_amount: '签约金额'
+      },
+      'yearly_payments.csv': {
+        yr: '年份',
+        payment_count: '回款笔数',
+        payment_amount: '回款金额'
+      },
+      'project_completion_rank.csv': {
+        project_id: '项目ID',
+        name: '项目名称',
+        contract_date: '签约时间',
+        total_price: '总价',
+        paid_amount: '已回款',
+        outstanding_amount: '未回款',
+        completion_rate_pct: '完成率(%)'
+      },
+      'overdue_projects_90d.csv': {
+        project_id: '项目ID',
+        name: '项目名称',
+        contract_date: '签约时间',
+        total_price: '总价',
+        paid_amount: '已回款',
+        outstanding_amount: '未回款',
+        days_since_contract: '签约至今(天)'
+      }
+    };
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i+1];
+        if (inQuotes) {
+          if (ch === '"' && next === '"') { cur += '"'; i++; }
+          else if (ch === '"') { inQuotes = false; }
+          else { cur += ch; }
+        } else {
+          if (ch === '"') inQuotes = true;
+          else if (ch === ',') { row.push(cur); cur=''; }
+          else if (ch === '\n') { row.push(cur); rows.push(row); row=[]; cur=''; }
+          else if (ch === '\r') { /* skip */ }
+          else { cur += ch; }
+        }
+      }
+      if (cur.length || row.length) { row.push(cur); rows.push(row); }
+      if (!rows.length) return { headers: [], data: [] };
+      const headers = rows[0];
+      const data = rows.slice(1).filter(r => r.some(cell => cell && cell.trim().length));
+      return { headers, data };
+    }
+
+    function tableFromObjects(rows, file) {
+      const section = document.createElement('section');
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const tbody = document.createElement('tbody');
+      const trHead = document.createElement('tr');
+      const headers = rows.length ? Object.keys(rows[0]) : [];
+      const map = headerMap[file] || {};
+      headers.forEach(h => { const th = document.createElement('th'); th.textContent = map[h] || h; trHead.appendChild(th); });
+      thead.appendChild(trHead);
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        headers.forEach(h => { const td = document.createElement('td'); td.textContent = row[h] ?? ''; tr.appendChild(td); });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(thead); table.appendChild(tbody);
+      section.appendChild(table);
+      return section;
+    }
+
+    async function render() {
+      const container = document.getElementById('content');
+      for (const r of reports) {
+        const sec = document.createElement('section');
+        const h2 = document.createElement('h2'); h2.textContent = r.title; sec.appendChild(h2);
+        try {
+          const resp = await fetch(r.api);
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const rows = await resp.json();
+          if (!rows || rows.length === 0) {
+            const p = document.createElement('p'); p.textContent = 'No data'; sec.appendChild(p);
+          } else {
+            sec.appendChild(tableFromObjects(rows, r.api.split('/').pop() + '.csv'));
+          }
+        } catch (e) {
+          const p = document.createElement('p'); p.className = 'error'; p.textContent = '无法加载 ' + r.title + ': ' + e.message; sec.appendChild(p);
+        }
+        container.appendChild(sec);
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>

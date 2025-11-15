@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>台账管理</title>
+  <style>
+    body { font-family: Segoe UI, Arial; margin: 20px; }
+    h1 { margin-top: 0; }
+    section { margin-bottom: 24px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; }
+    th { background: #f5f5f5; text-align: left; }
+    input, select { padding: 6px 8px; margin-right: 8px; }
+    button { padding: 6px 12px; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <h1>公司项目台账管理</h1>
+  <p><a href="index.html">返回首页</a></p>
+
+  <section>
+    <h2>项目</h2>
+    <div>
+      <input id="p_name" placeholder="项目名称" />
+      <input id="p_date" type="date" />
+      <input id="p_price" type="number" step="0.01" placeholder="总价" />
+      <button onclick="createProject()">新增项目</button>
+    </div>
+    <table id="projects">
+      <thead>
+        <tr>
+          <th>项目ID</th><th>项目名称</th><th>签约时间</th><th>总价</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>回款</h2>
+    <div>
+      <select id="pay_project"></select>
+      <input id="pay_date" type="date" />
+      <input id="pay_amount" type="number" step="0.01" placeholder="金额" />
+      <button onclick="createPayment()">新增回款</button>
+    </div>
+    <table id="payments">
+      <thead>
+        <tr>
+          <th>回款ID</th><th>项目ID</th><th>回款日期</th><th>金额</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <script>
+    async function fetchJSON(url, opts) {
+      const r = await fetch(url, opts);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }
+
+    async function loadProjects() {
+      const rows = await fetchJSON('/api/projects');
+      const tbody = document.querySelector('#projects tbody');
+      tbody.innerHTML = '';
+      const sel = document.getElementById('pay_project');
+      sel.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.id}</td><td><input value="${r.name}" data-id="${r.id}" data-field="name" /></td><td><input type="date" value="${r.contract_date}" data-id="${r.id}" data-field="contract_date" /></td><td><input type="number" step="0.01" value="${r.total_price}" data-id="${r.id}" data-field="total_price" /></td><td><button onclick="saveProject(${r.id})">保存</button><button onclick="deleteProject(${r.id})">删除</button><button onclick="loadPayments(${r.id})">查看回款</button></td>`;
+        tbody.appendChild(tr);
+        const opt = document.createElement('option');
+        opt.value = r.id; opt.textContent = `${r.id} - ${r.name}`;
+        sel.appendChild(opt);
+      });
+      if (rows.length) loadPayments(rows[0].id);
+    }
+
+    async function saveProject(id) {
+      const inputs = document.querySelectorAll(`#projects input[data-id='${id}']`);
+      const body = {};
+      inputs.forEach(i => body[i.getAttribute('data-field')] = i.value);
+      await fetchJSON(`/api/projects/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      await loadProjects();
+    }
+
+    async function deleteProject(id) {
+      await fetchJSON(`/api/projects/${id}`, { method: 'DELETE' });
+      await loadProjects();
+    }
+
+    async function createProject() {
+      const name = document.getElementById('p_name').value;
+      const date = document.getElementById('p_date').value;
+      const price = document.getElementById('p_price').value;
+      await fetchJSON('/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, contract_date: date, total_price: parseFloat(price || '0') }) });
+      document.getElementById('p_name').value = '';
+      document.getElementById('p_date').value = '';
+      document.getElementById('p_price').value = '';
+      await loadProjects();
+    }
+
+    async function loadPayments(projectId) {
+      const rows = await fetchJSON(`/api/payments?project_id=${projectId}`);
+      const tbody = document.querySelector('#payments tbody');
+      tbody.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.id}</td><td>${r.project_id}</td><td><input type="date" value="${r.payment_date}" data-id="${r.id}" data-field="payment_date" /></td><td><input type="number" step="0.01" value="${r.amount}" data-id="${r.id}" data-field="amount" /></td><td><button onclick="savePayment(${r.id})">保存</button><button onclick="deletePayment(${r.id})">删除</button></td>`;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('pay_project').value = projectId;
+    }
+
+    async function savePayment(id) {
+      const inputs = document.querySelectorAll(`#payments input[data-id='${id}']`);
+      const body = {};
+      inputs.forEach(i => body[i.getAttribute('data-field')] = i.value);
+      await fetchJSON(`/api/payments/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      await loadPayments(document.getElementById('pay_project').value);
+    }
+
+    async function deletePayment(id) {
+      await fetchJSON(`/api/payments/${id}`, { method: 'DELETE' });
+      await loadPayments(document.getElementById('pay_project').value);
+    }
+
+    async function createPayment() {
+      const project_id = document.getElementById('pay_project').value;
+      const payment_date = document.getElementById('pay_date').value;
+      const amount = document.getElementById('pay_amount').value;
+      await fetchJSON('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project_id: parseInt(project_id, 10), payment_date, amount: parseFloat(amount || '0') }) });
+      document.getElementById('pay_date').value = '';
+      document.getElementById('pay_amount').value = '';
+      await loadPayments(project_id);
+    }
+
+    loadProjects();
+  </script>
+</body>
+</html>
