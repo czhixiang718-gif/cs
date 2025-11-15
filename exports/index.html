@@ -21,15 +21,21 @@
 
   <script>
     const reports = [
-      { api: '/api/report/global_finance_totals', title: '全量合计' },
-      { api: '/api/report/project_finance_summary', title: '项目汇总明细' },
-      { api: '/api/report/monthly_contracts', title: '月签约' },
-      { api: '/api/report/monthly_payments', title: '月回款' },
-      { api: '/api/report/quarterly_contracts', title: '季度签约' },
-      { api: '/api/report/quarterly_payments', title: '季度回款' },
-      { api: '/api/report/yearly_contracts', title: '年度签约' },
-      { api: '/api/report/yearly_payments', title: '年度回款' },
-      { api: '/api/report/overdue_projects_90d', title: '逾期未回款>90天' },
+      { api: '/api/report/global_finance_totals', title: '全量合计', file: 'global_finance_totals.csv' },
+      { api: '/api/report/project_finance_summary', title: '项目汇总明细', file: 'project_finance_summary.csv' },
+      { api: '/api/report/overdue_projects_90d', title: '逾期未回款>90天', file: 'overdue_projects_90d.csv' },
+      { api: '/api/report/monthly_contracts', title: '月签约汇总', file: 'monthly_contracts.csv' },
+      { api: '/api/detail/monthly_contracts', title: '月签约明细', file: 'monthly_contracts_detail.csv' },
+      { api: '/api/report/monthly_payments', title: '月回款汇总', file: 'monthly_payments.csv' },
+      { api: '/api/detail/monthly_payments', title: '月回款明细', file: 'monthly_payments_detail.csv' },
+      { api: '/api/report/quarterly_contracts', title: '季度签约汇总', file: 'quarterly_contracts.csv' },
+      { api: '/api/detail/quarterly_contracts', title: '季度签约明细', file: 'quarterly_contracts_detail.csv' },
+      { api: '/api/report/quarterly_payments', title: '季度回款汇总', file: 'quarterly_payments.csv' },
+      { api: '/api/detail/quarterly_payments', title: '季度回款明细', file: 'quarterly_payments_detail.csv' },
+      { api: '/api/report/yearly_contracts', title: '年度签约汇总', file: 'yearly_contracts.csv' },
+      { api: '/api/detail/yearly_contracts', title: '年度签约明细', file: 'yearly_contracts_detail.csv' },
+      { api: '/api/report/yearly_payments', title: '年度回款汇总', file: 'yearly_payments.csv' },
+      { api: '/api/detail/yearly_payments', title: '年度回款明细', file: 'yearly_payments_detail.csv' },
     ];
 
     const headerMap = {
@@ -54,30 +60,72 @@
         project_count: '项目数',
         contract_amount: '签约金额'
       },
+      'monthly_contracts_detail.csv': {
+        ym: '年月',
+        id: '项目ID',
+        name: '项目名称',
+        contract_date: '签约时间',
+        total_price: '总价'
+      },
       'monthly_payments.csv': {
         ym: '年月',
         payment_count: '回款笔数',
         payment_amount: '回款金额'
+      },
+      'monthly_payments_detail.csv': {
+        ym: '年月',
+        id: '回款ID',
+        project_name: '项目名称',
+        payment_date: '回款日期',
+        amount: '金额'
       },
       'quarterly_contracts.csv': {
         yq: '季度',
         project_count: '项目数',
         contract_amount: '签约金额'
       },
+      'quarterly_contracts_detail.csv': {
+        yq: '季度',
+        id: '项目ID',
+        name: '项目名称',
+        contract_date: '签约时间',
+        total_price: '总价'
+      },
       'quarterly_payments.csv': {
         yq: '季度',
         payment_count: '回款笔数',
         payment_amount: '回款金额'
+      },
+      'quarterly_payments_detail.csv': {
+        yq: '季度',
+        id: '回款ID',
+        project_name: '项目名称',
+        payment_date: '回款日期',
+        amount: '金额'
       },
       'yearly_contracts.csv': {
         yr: '年份',
         project_count: '项目数',
         contract_amount: '签约金额'
       },
+      'yearly_contracts_detail.csv': {
+        yr: '年份',
+        id: '项目ID',
+        name: '项目名称',
+        contract_date: '签约时间',
+        total_price: '总价'
+      },
       'yearly_payments.csv': {
         yr: '年份',
         payment_count: '回款笔数',
         payment_amount: '回款金额'
+      },
+      'yearly_payments_detail.csv': {
+        yr: '年份',
+        id: '回款ID',
+        project_name: '项目名称',
+        payment_date: '回款日期',
+        amount: '金额'
       },
       'project_completion_rank.csv': {
         project_id: '项目ID',
@@ -158,7 +206,7 @@
           if (!rows || rows.length === 0) {
             const p = document.createElement('p'); p.textContent = 'No data'; sec.appendChild(p);
           } else {
-            sec.appendChild(tableFromObjects(rows, r.api.split('/').pop() + '.csv'));
+            sec.appendChild(tableFromObjects(rows, r.file));
           }
         } catch (e) {
           const p = document.createElement('p'); p.className = 'error'; p.textContent = '无法加载 ' + r.title + ': ' + e.message; sec.appendChild(p);

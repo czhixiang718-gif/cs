@@ -17,9 +17,13 @@
 <body>
   <h1>公司项目台账管理</h1>
   <p><a href="index.html">返回首页</a></p>
+  <p><button onclick="downloadAllExcel()">导出全部明细（xlsx）</button></p>
 
   <section>
     <h2>项目</h2>
+    <div>
+      <button onclick="exportProjectsExcel()">导出项目Excel</button>
+    </div>
     <div>
       <input id="p_name" placeholder="项目名称" />
       <input id="p_date" type="date" />
@@ -39,6 +43,9 @@
   <section>
     <h2>回款</h2>
     <div>
+      <button onclick="exportAllPaymentsExcel()">导出全部回款Excel</button>
+    </div>
+    <div>
       <select id="pay_project"></select>
       <input id="pay_date" type="date" />
       <input id="pay_amount" type="number" step="0.01" placeholder="金额" />
@@ -47,7 +54,7 @@
     <table id="payments">
       <thead>
         <tr>
-          <th>回款ID</th><th>项目ID</th><th>回款日期</th><th>金额</th><th>操作</th>
+          <th>回款ID</th><th>项目名称</th><th>回款日期</th><th>金额</th><th>操作</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -108,7 +115,7 @@
       tbody.innerHTML = '';
       rows.forEach(r => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.id}</td><td>${r.project_id}</td><td><input type="date" value="${r.payment_date}" data-id="${r.id}" data-field="payment_date" /></td><td><input type="number" step="0.01" value="${r.amount}" data-id="${r.id}" data-field="amount" /></td><td><button onclick="savePayment(${r.id})">保存</button><button onclick="deletePayment(${r.id})">删除</button></td>`;
+        tr.innerHTML = `<td>${r.id}</td><td>${r.project_name}</td><td><input type="date" value="${r.payment_date}" data-id="${r.id}" data-field="payment_date" /></td><td><input type="number" step="0.01" value="${r.amount}" data-id="${r.id}" data-field="amount" /></td><td><button onclick="savePayment(${r.id})">保存</button><button onclick="deletePayment(${r.id})">删除</button></td>`;
         tbody.appendChild(tr);
       });
       document.getElementById('pay_project').value = projectId;
@@ -135,6 +142,45 @@
       document.getElementById('pay_date').value = '';
       document.getElementById('pay_amount').value = '';
       await loadPayments(project_id);
+    }
+
+    async function exportProjectsExcel(){
+      const rows = await fetchJSON('/api/projects');
+      const headers = ['项目名称','签约时间','总价'];
+      const keys = ['name','contract_date','total_price'];
+      const htmlRows = rows.map(r => `<tr><td>${r.name}</td><td>${r.contract_date}</td><td>${r.total_price}</td></tr>`).join('');
+      const html = `<html><head><meta charset="utf-8" /></head><body><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${htmlRows}</tbody></table></body></html>`;
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = '项目列表.xls'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },0);
+    }
+    async function exportPaymentsExcel(){
+      const project_id = document.getElementById('pay_project').value;
+      const rows = await fetchJSON(`/api/payments?project_id=${project_id}`);
+      const headers = ['项目名称','回款时间','总价'];
+      const htmlRows = rows.map(r => `<tr><td>${r.project_name}</td><td>${r.payment_date}</td><td>${r.amount}</td></tr>`).join('');
+      const html = `<html><head><meta charset="utf-8" /></head><body><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${htmlRows}</tbody></table></body></html>`;
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = '回款列表.xls'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },0);
+    }
+
+    async function exportAllPaymentsExcel(){
+      const rows = await fetchJSON('/api/payments_all');
+      const headers = ['项目名称','回款时间','总价'];
+      const htmlRows = rows.map(r => `<tr><td>${r.project_name}</td><td>${r.payment_date}</td><td>${r.amount}</td></tr>`).join('');
+      const html = `<html><head><meta charset="utf-8" /></head><body><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${htmlRows}</tbody></table></body></html>`;
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = '全部回款列表.xls'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },0);
+    }
+
+    function downloadAllExcel(){
+      const a = document.createElement('a');
+      a.href = '/api/export/all.xlsx';
+      a.download = 'ledger_all.xlsx';
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ a.remove(); }, 0);
     }
 
     loadProjects();
