@@ -46,7 +46,7 @@
       <button onclick="exportAllPaymentsExcel()">导出全部回款Excel</button>
     </div>
     <div>
-      <select id="pay_project"></select>
+      <select id="pay_project" onchange="onProjectChange()"></select>
       <input id="pay_date" type="date" />
       <input id="pay_amount" type="number" step="0.01" placeholder="金额" />
       <button onclick="createPayment()">新增回款</button>
@@ -119,6 +119,11 @@
         tbody.appendChild(tr);
       });
       document.getElementById('pay_project').value = projectId;
+    }
+
+    function onProjectChange(){
+      const pid = document.getElementById('pay_project').value;
+      if (pid) loadPayments(pid);
     }
 
     async function savePayment(id) {
