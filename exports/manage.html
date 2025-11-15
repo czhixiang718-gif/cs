@@ -2,54 +2,89 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>台账管理</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>海南万企云服台帐管理系统 · 管理页面</title>
   <style>
-    body { font-family: Segoe UI, Arial; margin: 20px; }
-    h1 { margin-top: 0; }
-    section { margin-bottom: 24px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 6px 10px; }
-    th { background: #f5f5f5; text-align: left; }
-    input, select { padding: 6px 8px; margin-right: 8px; }
-    button { padding: 6px 12px; margin-right: 8px; }
+    :root { --glass: rgba(255,255,255,0.12); --glass-border: rgba(255,255,255,0.22); --text: #eef2f6; --muted: #c8ced6; --accent: #4ea8ff; }
+    html, body { height: 100%; }
+    body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color: var(--text); background:
+      radial-gradient(1200px 600px at 20% -10%, #2b2d55 0%, transparent 60%),
+      radial-gradient(1000px 500px at 80% 0%, #1e2250 0%, transparent 60%),
+      linear-gradient(180deg, #0f1020 0%, #131432 40%, #1b1c3f 100%);
+      background-attachment: fixed; }
+    .navbar { position: sticky; top: 0; z-index: 10; display:flex; justify-content:space-between; align-items:center; padding:14px 24px; background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--glass-border); }
+    .logo { font-weight: 600; letter-spacing: 0.4px; }
+    .nav-actions { display:flex; gap:12px; }
+    .btn { display:inline-block; padding:10px 16px; border-radius:10px; color: var(--text); text-decoration:none; background: rgba(255,255,255,0.12); border: 1px solid var(--glass-border); cursor:pointer; }
+    .btn:hover { background: rgba(255,255,255,0.18); }
+    .container { max-width:1200px; margin:24px auto; padding:0 24px 40px; display:grid; grid-template-columns: 1fr; gap:16px; }
+    .card { background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border:1px solid var(--glass-border); border-radius:16px; padding:16px; }
+    .card h2 { margin:0 0 12px; font-size:20px; letter-spacing:0.3px; text-shadow: 0 1px 0 rgba(255,255,255,0.4), 0 2px 0 rgba(255,255,255,0.3), 0 12px 24px rgba(0,0,0,0.35); }
+    .inputs { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 12px; }
+    .input, .select { padding:12px 14px; border-radius:12px; border:1px solid var(--glass-border); background: rgba(255,255,255,0.08); color: var(--text); outline:none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); transition: box-shadow .15s ease, border-color .15s ease, background .15s ease; }
+    .input:hover, .select:hover { background: rgba(255,255,255,0.12); }
+    .input:focus, .select:focus { box-shadow: 0 0 0 3px rgba(78,168,255,0.25); border-color: rgba(78,168,255,0.65); }
+    .input::placeholder { color: rgba(255,255,255,0.55); }
+    table input { padding:8px 10px; border-radius:8px; border:1px solid var(--glass-border); background: rgba(255,255,255,0.08); color: var(--text); outline:none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); }
+    table input.lead-phone { width: 14ch; box-sizing: border-box; }
+    table input.lead-name { width: 6em; box-sizing: border-box; }
+    table input:focus { box-shadow: 0 0 0 2px rgba(78,168,255,0.25); border-color: rgba(78,168,255,0.65); }
+    .action { padding:10px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.25); background: linear-gradient(180deg, #5eb8ff 0%, #2a73ff 100%); color:#fff; font-weight:600; cursor:pointer; }
+    table { width:100%; border-collapse:collapse; }
+    thead tr { background: rgba(255,255,255,0.08); }
+    th, td { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.12); text-align:left; }
+    th { color: var(--muted); font-weight:500; }
+    tbody tr { transition: background-color .15s ease, color .15s ease; }
+    tbody tr:hover { background: rgba(255,255,255,0.12); }
+    tbody tr:hover td { color: #fff; }
+    .actions{ display:flex; flex-wrap:nowrap; gap:10px; }
+    .btn-small{ padding:8px 12px; border-radius:8px; border:1px solid var(--glass-border); background: rgba(255,255,255,0.10); color: var(--text); cursor:pointer; }
+    .btn-small.primary{ background: linear-gradient(180deg, #5eb8ff 0%, #2a73ff 100%); color:#fff; border:none; }
+    .btn-small.warn{ background: rgba(231,76,60,0.35); border-color: rgba(231,76,60,0.65); }
   </style>
 </head>
 <body>
-  <h1>公司项目台账管理 <span style="float:right"><button onclick="openProfile()">个人管理</button> <button onclick="logout()">退出管理</button></span></h1>
-  <p><a href="index.html">返回首页</a></p>
-  <p><button onclick="downloadAllExcel()">导出全部明细（xlsx）</button></p>
-
-  <section>
-    <h2>项目</h2>
-    <div>
-      <button onclick="exportProjectsExcel()">导出项目Excel</button>
+  <div class="navbar">
+    <div class="logo">海南万企云服台帐管理系统</div>
+    <div class="nav-actions">
+      <a class="btn" href="index.html">返回首页</a>
+      <a class="btn" href="javascript:void(0)" onclick="openProfile()">个人管理</a>
+      <a class="btn" href="javascript:void(0)" onclick="logout()">退出管理</a>
     </div>
-    <div>
-      <input id="p_name" placeholder="项目名称" />
-      <input id="p_date" type="date" />
-      <input id="p_price" type="number" step="0.01" placeholder="总价" />
-      <button onclick="createProject()">新增项目</button>
+  </div>
+
+  <div class="container">
+  <section class="card">
+    <h2>项目</h2>
+    <div class="inputs">
+      <a class="btn" href="javascript:void(0)" onclick="downloadAllExcel()">导出全部明细（xlsx）</a>
+    </div>
+    <div class="inputs">
+      <input class="input" id="p_name" placeholder="项目名称" />
+      <input class="input" id="p_date" type="date" />
+      <input class="input" id="p_price" type="number" step="0.01" placeholder="总价" />
+      <input class="input" id="p_lead" placeholder="甲方负责人" />
+      <input class="input" id="p_phone" placeholder="联系电话" inputmode="numeric" maxlength="11" />
+      <button class="action" onclick="createProject()">新增项目</button>
     </div>
     <table id="projects">
       <thead>
         <tr>
-          <th>项目ID</th><th>项目名称</th><th>签约时间</th><th>总价</th><th>操作</th>
+          <th>项目ID</th><th>项目名称</th><th>签约时间</th><th>总价</th><th>甲方负责人</th><th>联系电话</th><th>操作</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </section>
 
-  <section>
+  <section class="card">
     <h2>回款</h2>
-    <div>
-      <button onclick="exportAllPaymentsExcel()">导出全部回款Excel</button>
-    </div>
-    <div>
-      <select id="pay_project" onchange="onProjectChange()"></select>
-      <input id="pay_date" type="date" />
-      <input id="pay_amount" type="number" step="0.01" placeholder="金额" />
-      <button onclick="createPayment()">新增回款</button>
+    <div class="inputs"></div>
+    <div class="inputs">
+      <select class="select" id="pay_project" onchange="onProjectChange()"></select>
+      <input class="input" id="pay_date" type="date" />
+      <input class="input" id="pay_amount" type="number" step="0.01" placeholder="金额" />
+      <button class="action" onclick="createPayment()">新增回款</button>
     </div>
     <table id="payments">
       <thead>
@@ -60,6 +95,7 @@
       <tbody></tbody>
     </table>
   </section>
+  </div>
 
   <script>
     async function fetchJSON(url, opts) {
@@ -76,7 +112,7 @@
       sel.innerHTML = '';
       rows.forEach(r => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.id}</td><td><input value="${r.name}" data-id="${r.id}" data-field="name" /></td><td><input type="date" value="${r.contract_date}" data-id="${r.id}" data-field="contract_date" /></td><td><input type="number" step="0.01" value="${r.total_price}" data-id="${r.id}" data-field="total_price" /></td><td><button onclick="saveProject(${r.id})">保存</button><button onclick="deleteProject(${r.id})">删除</button><button onclick="loadPayments(${r.id})">查看回款</button></td>`;
+        tr.innerHTML = `<td>${r.id}</td><td><input value="${r.name}" data-id="${r.id}" data-field="name" /></td><td><input type="date" value="${r.contract_date}" data-id="${r.id}" data-field="contract_date" /></td><td><input type="number" step="0.01" value="${r.total_price}" data-id="${r.id}" data-field="total_price" /></td><td><input class="lead-name" value="${r.lead_name || ''}" data-id="${r.id}" data-field="lead_name" /></td><td><input class="lead-phone" value="${r.lead_phone || ''}" data-id="${r.id}" data-field="lead_phone" inputmode="numeric" maxlength="11" oninput="this.value=this.value.replace(/\D/g,'').slice(0,11)" /></td><td><div class="actions"><button class="btn-small primary" onclick="saveProject(${r.id})">保存</button><button class="btn-small warn" onclick="deleteProject(${r.id})">删除</button><button class="btn-small" onclick="loadPayments(${r.id})">查看回款</button></div></td>`;
         tbody.appendChild(tr);
         const opt = document.createElement('option');
         opt.value = r.id; opt.textContent = `${r.id} - ${r.name}`;
@@ -88,7 +124,12 @@
     async function saveProject(id) {
       const inputs = document.querySelectorAll(`#projects input[data-id='${id}']`);
       const body = {};
-      inputs.forEach(i => body[i.getAttribute('data-field')] = i.value);
+      inputs.forEach(i => {
+        const f = i.getAttribute('data-field');
+        let v = i.value;
+        if (f === 'lead_phone') { v = v.replace(/\D/g,'').slice(0,11); }
+        body[f] = v;
+      });
       await fetchJSON(`/api/projects/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       await loadProjects();
     }
@@ -102,10 +143,14 @@
       const name = document.getElementById('p_name').value;
       const date = document.getElementById('p_date').value;
       const price = document.getElementById('p_price').value;
-      await fetchJSON('/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, contract_date: date, total_price: parseFloat(price || '0') }) });
+      const lead_name = document.getElementById('p_lead').value;
+      const lead_phone = document.getElementById('p_phone').value.replace(/\D/g,'').slice(0,11);
+      await fetchJSON('/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, contract_date: date, total_price: parseFloat(price || '0'), lead_name, lead_phone }) });
       document.getElementById('p_name').value = '';
       document.getElementById('p_date').value = '';
       document.getElementById('p_price').value = '';
+      document.getElementById('p_lead').value = '';
+      document.getElementById('p_phone').value = '';
       await loadProjects();
     }
 
@@ -115,7 +160,7 @@
       tbody.innerHTML = '';
       rows.forEach(r => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.id}</td><td>${r.project_name}</td><td><input type="date" value="${r.payment_date}" data-id="${r.id}" data-field="payment_date" /></td><td><input type="number" step="0.01" value="${r.amount}" data-id="${r.id}" data-field="amount" /></td><td><button onclick="savePayment(${r.id})">保存</button><button onclick="deletePayment(${r.id})">删除</button></td>`;
+        tr.innerHTML = `<td>${r.id}</td><td>${r.project_name}</td><td><input type="date" value="${r.payment_date}" data-id="${r.id}" data-field="payment_date" /></td><td><input type="number" step="0.01" value="${r.amount}" data-id="${r.id}" data-field="amount" /></td><td><div class=\"actions\"><button class=\"btn-small primary\" onclick=\"savePayment(${r.id})\">保存</button><button class=\"btn-small warn\" onclick=\"deletePayment(${r.id})\">删除</button></div></td>`;
         tbody.appendChild(tr);
       });
       document.getElementById('pay_project').value = projectId;

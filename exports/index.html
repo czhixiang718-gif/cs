@@ -3,23 +3,114 @@
 <head>
   <meta charset="utf-8" />
   <title>公司项目台账报表预览</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: Segoe UI, Arial; margin: 20px; }
-    h1 { margin-top: 0; }
-    section { margin-bottom: 24px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 6px 10px; }
-    th { background: #f5f5f5; text-align: left; }
-    .error { color: #b00020; }
+    :root { --glass: rgba(255,255,255,0.10); --glass-border: rgba(255,255,255,0.18); --text: #eef2f6; --muted: #c8ced6; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; color: var(--text);
+      font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at 20% -10%, #2b2d55 0%, transparent 60%),
+        radial-gradient(1000px 500px at 80% 0%, #1e2250 0%, transparent 60%),
+        linear-gradient(180deg, #0f1020 0%, #131432 40%, #1b1c3f 100%);
+      background-attachment: fixed;
+    }
+    .navbar { position: sticky; top: 0; z-index: 10; display:flex; justify-content:space-between; align-items:center; padding:14px 24px; background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--glass-border); }
+    .logo { font-weight: 600; letter-spacing: 0.4px; }
+    .nav-actions { display:flex; gap:12px; }
+    .btn { display:inline-block; padding:10px 16px; border-radius:10px; color: var(--text); text-decoration:none; background: rgba(255,255,255,0.12); border: 1px solid var(--glass-border); }
+    .btn:hover { background: rgba(255,255,255,0.18); }
+    .hero { max-width:1200px; margin:40px auto 16px; padding:24px; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border:1px solid var(--glass-border); border-radius:16px; }
+    .hero h1 { margin:0 0 6px; font-size:28px; }
+    .hero p { margin:0; color: var(--muted); }
+    .container { max-width:1200px; margin:0 auto; padding:8px 24px 40px; display:grid; grid-template-columns: 1fr; gap:16px; }
+    .card { background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border:1px solid var(--glass-border); border-radius:16px; padding:16px; }
+    .card h2 { margin:0 0 12px; font-size:20px; letter-spacing:0.3px; text-shadow: 0 1px 0 rgba(255,255,255,0.5), 0 2px 0 rgba(255,255,255,0.4), 0 3px 0 rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.35); }
+    .card-body { overflow: visible; }
+    table { width:100%; border-collapse:collapse; }
+    thead tr { background: rgba(255,255,255,0.08); }
+    th, td { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.12); text-align:left; }
+    tbody tr { transition: background-color .15s ease, color .15s ease; }
+    tbody tr:hover { background: rgba(255,255,255,0.12); }
+    tbody tr:hover td { color: #fff; }
+    th { color: var(--muted); font-weight:500; }
+    .error { color: #ff6b6b; }
+    .c1{ border-color:#4ea8ff33; box-shadow:0 6px 16px #4ea8ff22; }
+    .c2{ border-color:#9b59b633; box-shadow:0 6px 16px #9b59b622; }
+    .c3{ border-color:#2ecc7133; box-shadow:0 6px 16px #2ecc7122; }
+    .c4{ border-color:#f39c1233; box-shadow:0 6px 16px #f39c1222; }
+    .c5{ border-color:#e74c3c33; box-shadow:0 6px 16px #e74c3c22; }
+    .c6{ border-color:#16a08533; box-shadow:0 6px 16px #16a08522; }
+    .c7{ border-color:#8e44ad33; box-shadow:0 6px 16px #8e44ad22; }
+    .c8{ border-color:#3498db33; box-shadow:0 6px 16px #3498db22; }
+    .c9{ border-color:#27ae6033; box-shadow:0 6px 16px #27ae6022; }
+    .c10{ border-color:#d3545d33; box-shadow:0 6px 16px #d3545d22; }
+    .c11{ border-color:#e67e2233; box-shadow:0 6px 16px #e67e2222; }
+    .c12{ border-color:#2980b933; box-shadow:0 6px 16px #2980b922; }
+    .c13{ border-color:#1abc9c33; box-shadow:0 6px 16px #1abc9c22; }
+    .c14{ border-color:#bdc3c733; box-shadow:0 6px 16px #bdc3c722; }
+    .is-overdue { background: rgba(255,72,72,0.12); }
+    .is-overdue td { color: #ff4d4f; }
+    .cell-alert { color: #ff4d4f; font-weight:700; }
+    #bg { position:fixed; inset:0; width:100%; height:100%; z-index:0; filter:blur(5px); opacity:0.30; pointer-events:none; }
   </style>
 </head>
 <body>
-  <h1>公司项目台账报表预览</h1>
-  <p><a href="manage.html">进入后台管理页面</a></p>
-
-  <div id="content"></div>
+  <canvas id="bg"></canvas>
+  <canvas id="bg"></canvas>
+  <div class="navbar">
+    <div class="logo">海南万企云服台帐管理系统</div>
+    <div class="nav-actions">
+      <a class="btn" href="manage.html">进入后台管理页面</a>
+      <a class="btn" href="javascript:void(0)" onclick="logout()">退出管理</a>
+    </div>
+  </div>
+  <section class="hero">
+    <h1>海南万企云服台帐管理系统</h1>
+    <p>清晰展示签约与回款情况，实时汇总，磨砂玻璃质感的简洁视图。</p>
+  </section>
+  <div id="content" class="container"></div>
+  <div id="payments_modal" style="position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.35);display:none;">
+    <div style="background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border:1px solid var(--glass-border); border-radius:12px; width:560px; max-width:92%; margin:80px auto; padding:16px; color: var(--text);">
+      <h3 id="pm_title" style="margin:0 0 10px; font-size:18px; text-shadow: 0 1px 0 rgba(255,255,255,0.5), 0 2px 0 rgba(255,255,255,0.4), 0 3px 0 rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.35);">项目回款明细</h3>
+      <div id="pm_body"></div>
+      <div style="text-align:right; margin-top:12px;">
+        <a class="btn" href="javascript:void(0)" onclick="closePayments()">关闭</a>
+      </div>
+    </div>
+  </div>
+  <div id="bg_settings" style="position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.35);display:none;">
+    <div style="background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border:1px solid var(--glass-border); border-radius:12px; width:480px; max-width:92%; margin:80px auto; padding:16px; color: var(--text);">
+      <h3 style="margin:0 0 10px; font-size:18px; text-shadow: 0 1px 0 rgba(255,255,255,0.5), 0 2px 0 rgba(255,255,255,0.4), 0 3px 0 rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.35);">背景设置</h3>
+      <label style="display:block;margin-top:8px;">配色</label>
+      <select id="bg_palette" style="width:100%;padding:8px;">
+        <option value="cool" selected>冷色（蓝）</option>
+        <option value="warm">暖色（橙红）</option>
+        <option value="neutral">中性（紫绿）</option>
+      </select>
+      <label style="display:block;margin-top:12px;">密度</label>
+      <select id="bg_density" style="width:100%;padding:8px;">
+        <option value="低">低</option>
+        <option value="中" selected>中</option>
+        <option value="高">高</option>
+      </select>
+      <label style="display:block;margin-top:12px;">速度（0.1–1.0）</label>
+      <input id="bg_speed" type="number" step="0.1" min="0.1" max="1.0" value="0.4" style="width:100%;padding:8px;" />
+      <label style="display:block;margin-top:12px;">不透明度（0.1–0.6）</label>
+      <input id="bg_opacity" type="number" step="0.05" min="0.1" max="0.6" value="0.35" style="width:100%;padding:8px;" />
+      <label style="display:block;margin-top:12px;">模糊（px）</label>
+      <input id="bg_blur" type="number" step="1" min="0" max="12" value="6" style="width:100%;padding:8px;" />
+      <div style="margin-top:12px;text-align:right;">
+        <a class="btn" href="javascript:void(0)" onclick="applyBgSettings()">应用</a>
+        <a class="btn" href="javascript:void(0)" onclick="closeBgSettings()" style="margin-left:8px;">关闭</a>
+      </div>
+    </div>
+  </div>
 
   <script>
+    function openBgSettings(){ const el = document.getElementById('bg_settings'); if (el) el.style.display='block'; }
+    function closeBgSettings(){ const el = document.getElementById('bg_settings'); if (el) el.style.display='none'; }
     const reports = [
       { api: '/api/report/global_finance_totals', title: '全量合计', file: 'global_finance_totals.csv' },
       { api: '/api/report/project_finance_summary', title: '项目汇总明细', file: 'project_finance_summary.csv' },
@@ -51,6 +142,8 @@
         name: '项目名称',
         contract_date: '签约时间',
         total_price: '总价',
+        lead_name: '甲方负责人',
+        lead_phone: '联系电话',
         payment_count: '回款笔数',
         payment_total_amount: '回款总额',
         outstanding_amount: '未回款总额'
@@ -141,6 +234,8 @@
         name: '项目名称',
         contract_date: '签约时间',
         total_price: '总价',
+        lead_name: '甲方负责人',
+        lead_phone: '联系电话',
         paid_amount: '已回款',
         outstanding_amount: '未回款',
         days_since_contract: '签约至今(天)'
@@ -180,13 +275,28 @@
       const thead = document.createElement('thead');
       const tbody = document.createElement('tbody');
       const trHead = document.createElement('tr');
-      const headers = rows.length ? Object.keys(rows[0]) : [];
+      const allHeaders = rows.length ? Object.keys(rows[0]) : [];
+      const hidden = new Set(['project_id','id']);
+      const headers = allHeaders.filter(h => !hidden.has(h));
       const map = headerMap[file] || {};
       headers.forEach(h => { const th = document.createElement('th'); th.textContent = map[h] || h; trHead.appendChild(th); });
       thead.appendChild(trHead);
+      const isOverdue = file === 'overdue_projects_90d.csv';
+      const isSummary = file === 'project_finance_summary.csv';
       rows.forEach(row => {
         const tr = document.createElement('tr');
-        headers.forEach(h => { const td = document.createElement('td'); td.textContent = row[h] ?? ''; tr.appendChild(td); });
+        if (isOverdue) tr.className = 'is-overdue';
+        if (isSummary) tr.style.cursor = 'pointer';
+        if (isSummary) {
+          const pid = row['project_id'];
+          const pname = row['name'];
+          tr.addEventListener('click', () => openPaymentsModal(pid, pname));
+        }
+        headers.forEach(h => {
+          const td = document.createElement('td'); td.textContent = row[h] ?? '';
+          if (isOverdue && (h === 'outstanding_amount' || h === 'days_since_contract')) td.className = 'cell-alert';
+          tr.appendChild(td);
+        });
         tbody.appendChild(tr);
       });
       table.appendChild(thead); table.appendChild(tbody);
@@ -194,28 +304,119 @@
       return section;
     }
 
+    async function openPaymentsModal(projectId, projectName){
+      try {
+        const resp = await fetch('/api/payments?project_id=' + encodeURIComponent(projectId));
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const rows = await resp.json();
+        const title = document.getElementById('pm_title');
+        title.textContent = `项目：${projectName} 回款明细`;
+        const body = document.getElementById('pm_body');
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        ['回款时间','回款金额'].forEach(h => { const th = document.createElement('th'); th.textContent = h; trh.appendChild(th); });
+        thead.appendChild(trh);
+        const tbody = document.createElement('tbody');
+        rows.forEach(r => { const tr = document.createElement('tr');
+          const td1 = document.createElement('td'); td1.textContent = r.payment_date ?? ''; tr.appendChild(td1);
+          const td2 = document.createElement('td'); td2.textContent = r.amount ?? ''; tr.appendChild(td2);
+          tbody.appendChild(tr);
+        });
+        table.appendChild(thead); table.appendChild(tbody);
+        body.innerHTML = '';
+        body.appendChild(table);
+        document.getElementById('payments_modal').style.display = 'block';
+      } catch (e) {
+        alert('加载回款明细失败: ' + e.message);
+      }
+    }
+    function closePayments(){ document.getElementById('payments_modal').style.display = 'none'; }
+
+    const palettes = { cool: ['#4ea8ff','#3498db','#2980b9'], warm: ['#f39c12','#e67e22','#e74c3c'], neutral: ['#8e44ad','#1abc9c','#bdc3c7'] };
+    let bgConfig = { paletteKey:'warm', density:'中', speed:0.5, opacity:0.30, blur:5 };
+
+    function startBg() {
+      const canvas = document.getElementById('bg');
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width = window.innerWidth;
+      let h = canvas.height = window.innerHeight;
+      let palette = palettes[bgConfig.paletteKey] || palettes.cool;
+      let nodes = [];
+      function reset() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+        const densityFactor = bgConfig.density === '低' ? 0.7 : (bgConfig.density === '高' ? 1.3 : 1.0);
+        const base = Math.floor((w*h)/35000);
+        const count = Math.max(50, Math.min(160, Math.floor(base * densityFactor)));
+        canvas.style.opacity = String(bgConfig.opacity);
+        canvas.style.filter = `blur(${bgConfig.blur}px)`;
+        nodes = [];
+        for (let i=0;i<count;i++) {
+          nodes.push({ x: Math.random()*w, y: Math.random()*h, vx: (Math.random()*2-1)*bgConfig.speed, vy: (Math.random()*2-1)*bgConfig.speed, r: 2.5 + Math.random()*3.0, c: palette[i%palette.length] });
+        }
+      }
+      function step() {
+        ctx.clearRect(0,0,w,h);
+        for (let i=0;i<nodes.length;i++) { const n = nodes[i]; n.x += n.vx; n.y += n.vy; if (n.x < 0 || n.x > w) n.vx *= -1; if (n.y < 0 || n.y > h) n.vy *= -1; }
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i=0;i<nodes.length;i++) { const n = nodes[i]; ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 2*Math.PI); ctx.fillStyle = n.c + '99'; ctx.fill(); }
+        const thresh = Math.min(w,h) * 0.08;
+        for (let i=0;i<nodes.length;i++) {
+          for (let j=i+1;j<nodes.length;j++) {
+            const a = nodes[i], b = nodes[j]; const dx = a.x-b.x, dy = a.y-b.y; const d = Math.hypot(dx,dy);
+            if (d < thresh) { const alpha = (1 - d/thresh) * 0.35; const lc = palette[0] || '#4ea8ff'; ctx.strokeStyle = lc + Math.floor(alpha*255).toString(16).padStart(2,'0'); ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+          }
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        requestAnimationFrame(step);
+      }
+      reset();
+      step();
+      window.addEventListener('resize', reset);
+      window.bgApi = { apply(cfg){ bgConfig = { ...bgConfig, ...cfg }; palette = palettes[bgConfig.paletteKey] || palettes.cool; reset(); } };
+    }
+
     async function render() {
       const container = document.getElementById('content');
-      for (const r of reports) {
+      for (let i = 0; i < reports.length; i++) {
+        const r = reports[i];
         const sec = document.createElement('section');
+        sec.className = 'card c' + (i+1);
         const h2 = document.createElement('h2'); h2.textContent = r.title; sec.appendChild(h2);
+        const body = document.createElement('div'); body.className = 'card-body';
         try {
           const resp = await fetch(r.api);
           if (!resp.ok) throw new Error('HTTP ' + resp.status);
           const rows = await resp.json();
           if (!rows || rows.length === 0) {
-            const p = document.createElement('p'); p.textContent = 'No data'; sec.appendChild(p);
+            const p = document.createElement('p'); p.textContent = 'No data'; body.appendChild(p);
           } else {
-            sec.appendChild(tableFromObjects(rows, r.file));
+            body.appendChild(tableFromObjects(rows, r.file));
           }
         } catch (e) {
-          const p = document.createElement('p'); p.className = 'error'; p.textContent = '无法加载 ' + r.title + ': ' + e.message; sec.appendChild(p);
+          const p = document.createElement('p'); p.className = 'error'; p.textContent = '无法加载 ' + r.title + ': ' + e.message; body.appendChild(p);
         }
+        sec.appendChild(body);
         container.appendChild(sec);
       }
     }
 
+    startBg();
     render();
+
+    function applyBgSettings(){
+      const cfg = {
+        paletteKey: (document.getElementById('bg_palette')||{}).value || 'cool',
+        density: (document.getElementById('bg_density')||{}).value || '中',
+        speed: Math.max(0.1, Math.min(1.0, parseFloat((document.getElementById('bg_speed')||{}).value || '0.4'))),
+        opacity: Math.max(0.1, Math.min(0.6, parseFloat((document.getElementById('bg_opacity')||{}).value || '0.35'))),
+        blur: Math.max(0, Math.min(12, parseInt((document.getElementById('bg_blur')||{}).value || '6')))
+      };
+      if (window.bgApi) window.bgApi.apply(cfg);
+      closeBgSettings();
+    }
+    async function logout(){ try { await fetch('/api/logout', { method:'POST' }); } catch(e){} location.href = 'login.html'; }
   </script>
 </body>
 </html>

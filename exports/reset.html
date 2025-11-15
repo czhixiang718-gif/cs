@@ -26,7 +26,14 @@
       const email = document.getElementById('email').value;
       const r = await fetch('/api/forgot_password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email }) });
       const j = await r.json();
-      if (j.link) document.getElementById('msg').textContent = '已生成重置链接：' + j.link;
+      if (j.link){
+        const msg = document.getElementById('msg');
+        if (j.sent){
+          msg.textContent = '邮件已发送，请查收。如果未收到，请使用以下链接：' + j.link;
+        } else {
+          msg.textContent = '暂未发送邮件（' + (j.info || '') + '），请复制以下链接手动打开：' + j.link;
+        }
+      }
     }
     async function reset(){
       const token = document.getElementById('token').value;

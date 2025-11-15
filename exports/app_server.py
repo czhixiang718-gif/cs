@@ -70,6 +70,50 @@ def tsv_to_json(tsv):
         rows.append(obj)
     return rows
 
+def sql_escape(s):
+    try:
+        return str(s).replace("'", "''")
+    except Exception:
+        return ""
+
+def send_email(to_addr: str, subject: str, body_text: str, body_html: str = None):
+    host = os.environ.get("LEDGER_SMTP_HOST")
+    port = int(os.environ.get("LEDGER_SMTP_PORT", "0") or 0)
+    user = os.environ.get("LEDGER_SMTP_USER")
+    pw = os.environ.get("LEDGER_SMTP_PASS")
+    from_addr = os.environ.get("LEDGER_SMTP_FROM", user or "")
+    if not (host and port and user and pw and from_addr):
+        return False, "smtp_not_configured"
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = from_addr
+        msg["To"] = to_addr
+        part1 = MIMEText(body_text, "plain", "utf-8")
+        msg.attach(part1)
+        if body_html:
+            part2 = MIMEText(body_html, "html", "utf-8")
+            msg.attach(part2)
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port) as server:
+                server.login(user, pw)
+                server.sendmail(from_addr, [to_addr], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port) as server:
+                server.ehlo()
+                try:
+                    server.starttls()
+                except Exception:
+                    pass
+                server.login(user, pw)
+                server.sendmail(from_addr, [to_addr], msg.as_string())
+        return True, "sent"
+    except Exception as e:
+        return False, f"smtp_error:{e}"
+
 class Handler(SimpleHTTPRequestHandler):
     def translate_path(self, path):
         return os.path.join(ROOT, path.lstrip("/"))
@@ -81,7 +125,8 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 self.handle_api_get()
         else:
-            if self.path == "/manage.html" and not self.get_session_user():
+            protect = {"/", "/index.html", "/manage.html"}
+            if self.path in protect and not self.get_session_user():
                 self.send_response(302)
                 self.send_header("Location", "/login.html")
                 self.end_headers()
@@ -160,7 +205,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response({"username": ADMIN_USER})
             return
         if path == "/api/projects":
-            tsv, err = run_sql("SELECT id,name,contract_date,total_price,created_at,updated_at FROM projects ORDER BY id", expect_tsv=True)
+            tsv, err = run_sql("SELECT id,name,contract_date,total_price,lead_name,lead_phone,created_at,updated_at FROM projects ORDER BY id", expect_tsv=True)
             if err:
                 self.json_response({"error": err}, 500)
                 return
@@ -185,7 +230,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response(tsv_to_json(tsv))
             return
         if path == "/api/report/project_finance_summary":
-            tsv, err = run_sql("SELECT project_id,name,contract_date,total_price,payment_count,payment_total_amount,outstanding_amount FROM project_finance_summary ORDER BY project_id", expect_tsv=True)
+            tsv, err = run_sql("SELECT project_id,name,contract_date,total_price,lead_name,lead_phone,payment_count,payment_total_amount,outstanding_amount FROM project_finance_summary ORDER BY project_id", expect_tsv=True)
             if err:
                 self.json_response({"error": err}, 500); return
             self.json_response(tsv_to_json(tsv)); return
@@ -255,7 +300,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.json_response({"error": err}, 500); return
             self.json_response(tsv_to_json(tsv)); return
         if path == "/api/report/overdue_projects_90d":
-            tsv, err = run_sql("SELECT project_id,name,contract_date,total_price,paid_amount,outstanding_amount,days_since_contract FROM overdue_projects_90d ORDER BY days_since_contract DESC", expect_tsv=True)
+            tsv, err = run_sql("SELECT project_id,name,contract_date,total_price,lead_name,lead_phone,paid_amount,outstanding_amount,days_since_contract FROM overdue_projects_90d ORDER BY days_since_contract DESC", expect_tsv=True)
             if err:
                 self.json_response({"error": err}, 500); return
             self.json_response(tsv_to_json(tsv)); return
@@ -593,7 +638,11 @@ class Handler(SimpleHTTPRequestHandler):
             token = secrets.token_hex(16)
             RESET_TOKENS[token] = {"email": email, "exp": time.time()+3600}
             link = f"/reset.html?token={token}"
-            self.json_response({"success": True, "link": link})
+            subj = "密码重置"
+            text = f"请使用以下链接重置密码：{link}"
+            html = f"<p>请点击下方链接重置密码（1小时内有效）：</p><p><a href=\"{link}\">{link}</a></p>"
+            sent, info = send_email(email or from_addr, subj, text, html)
+            self.json_response({"success": True, "link": link, "email": email, "sent": sent, "info": info})
             return
         if path == "/api/reset_password" and method == "POST":
             token = (body.get("token") or "").strip()
@@ -629,12 +678,15 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/projects" and method == "POST":
             if not self.get_session_user():
                 self.json_response({"error": "unauthorized"}, 401); return
-            name = (body.get("name", "") or "").replace("'", "''")
+            name = sql_escape(body.get("name", "") or "")
             date = body.get("contract_date", "") or ""
             price = body.get("total_price", 0) or 0
+            lead_name = sql_escape(body.get("lead_name", "") or "")
+            lead_phone = (body.get("lead_phone", "") or "")
+            lead_phone = "".join([ch for ch in lead_phone if ch.isdigit()])[:11]
             if not name or not date:
                 self.json_response({"error": "name and contract_date required"}, 400); return
-            ok, err = run_sql(f"INSERT INTO projects(name,contract_date,total_price) VALUES('{name}','{date}',{float(price)})")
+            ok, err = run_sql(f"INSERT INTO projects(name,contract_date,total_price,lead_name,lead_phone) VALUES('{name}','{date}',{float(price)},'{lead_name}','{lead_phone}')")
             if not ok:
                 self.json_response({"error": err}, 500)
                 return
@@ -646,11 +698,16 @@ class Handler(SimpleHTTPRequestHandler):
             pid = int(path.split("/")[-1])
             fields = []
             if "name" in body:
-                fields.append(f"name='{body['name'].replace("'","''")}'")
+                fields.append(f"name='{sql_escape(body.get('name',''))}'")
             if "contract_date" in body:
                 fields.append(f"contract_date='{body['contract_date']}'")
             if "total_price" in body:
                 fields.append(f"total_price={float(body['total_price'])}")
+            if "lead_name" in body:
+                fields.append(f"lead_name='{sql_escape(body.get('lead_name',''))}'")
+            if "lead_phone" in body:
+                lp = "".join([ch for ch in str(body.get('lead_phone','')) if ch.isdigit()])[:11]
+                fields.append(f"lead_phone='{lp}'")
             if not fields:
                 self.json_response({"error": "no fields"}, 400)
                 return
