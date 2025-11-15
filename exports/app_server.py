@@ -11,6 +11,33 @@ if not os.path.exists(MYSQL):
 DB = "ledger_db"
 USER = os.environ.get("LEDGER_APP_USER", "ledger_app")
 PWD = os.environ.get("LEDGER_APP_PWD", "App!12345")
+ADMIN_FILE = os.path.join(ROOT, "admin.json")
+SESSIONS = {}
+RESET_TOKENS = {}
+
+def load_admin_creds():
+    default = {"username": "zhaofan", "password": "zhaofan9766"}
+    if os.path.exists(ADMIN_FILE):
+        try:
+            with open(ADMIN_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                u = data.get("username") or default["username"]
+                p = data.get("password") or default["password"]
+                return {"username": u, "password": p}
+        except Exception:
+            return default
+    else:
+        try:
+            with open(ADMIN_FILE, "w", encoding="utf-8") as f:
+                json.dump(default, f, ensure_ascii=False)
+        except Exception:
+            pass
+        return default
+
+_creds = load_admin_creds()
+ADMIN_USER = _creds["username"]
+ADMIN_PASS = _creds["password"]
+SESSION_TTL = 600
 
 def run_sql(sql, expect_tsv=False):
     env = os.environ.copy()
@@ -54,7 +81,12 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 self.handle_api_get()
         else:
-            super().do_GET()
+            if self.path == "/manage.html" and not self.get_session_user():
+                self.send_response(302)
+                self.send_header("Location", "/login.html")
+                self.end_headers()
+            else:
+                super().do_GET()
 
     def do_POST(self):
         if self.path.startswith("/api/"):
@@ -89,12 +121,43 @@ class Handler(SimpleHTTPRequestHandler):
             return {}
         return json.loads(raw.decode("utf-8"))
 
+    def get_session_user(self):
+        cookie = self.headers.get("Cookie")
+        if not cookie:
+            return None
+        parts = [p.strip() for p in cookie.split(";")]
+        val = None
+        for p in parts:
+            if p.startswith("SESSIONID="):
+                val = p.split("=",1)[1]
+                break
+        if not val:
+            return None
+        info = SESSIONS.get(val)
+        if not info:
+            return None
+        import time
+        last = info.get("last", 0)
+        if last < time.time() - SESSION_TTL:
+            try:
+                SESSIONS.pop(val, None)
+            except Exception:
+                pass
+            return None
+        info["last"] = time.time()
+        return info.get("user")
+
     def handle_api_get(self):
         parsed = urlparse(self.path)
         path = parsed.path
         qs = parse_qs(parsed.query)
         if path == "/api/health":
-            self.json_response({"ok": True})
+            self.json_response({"ok": True, "auth": True if self.get_session_user() else False})
+            return
+        if path == "/api/admin_profile":
+            if not self.get_session_user():
+                self.json_response({"error": "unauthorized"}, 401); return
+            self.json_response({"username": ADMIN_USER})
             return
         if path == "/api/projects":
             tsv, err = run_sql("SELECT id,name,contract_date,total_price,created_at,updated_at FROM projects ORDER BY id", expect_tsv=True)
@@ -492,7 +555,80 @@ class Handler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         body = self.read_json()
+        global ADMIN_PASS
+        if path == "/api/login" and method == "POST":
+            u = (body.get("username") or "").strip()
+            p = (body.get("password") or "").strip()
+            if u == ADMIN_USER and p == ADMIN_PASS:
+                import secrets
+                token = secrets.token_hex(16)
+                import time
+                SESSIONS[token] = {"user": u, "last": time.time()}
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Set-Cookie", f"SESSIONID={token}; Path=/; HttpOnly")
+                data = json.dumps({"success": True}).encode("utf-8")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
+            else:
+                self.json_response({"error": "invalid"}, 401)
+                return
+        if path == "/api/logout" and method == "POST":
+            cookie = self.headers.get("Cookie")
+            if cookie and "SESSIONID=" in cookie:
+                try:
+                    token = [p.strip() for p in cookie.split(";") if p.strip().startswith("SESSIONID=")][0].split("=",1)[1]
+                    SESSIONS.pop(token, None)
+                except Exception:
+                    pass
+            self.send_response(200)
+            self.send_header("Set-Cookie", "SESSIONID=; Path=/; Max-Age=0")
+            self.end_headers()
+            return
+        if path == "/api/forgot_password" and method == "POST":
+            email = (body.get("email") or "").strip()
+            import secrets, time
+            token = secrets.token_hex(16)
+            RESET_TOKENS[token] = {"email": email, "exp": time.time()+3600}
+            link = f"/reset.html?token={token}"
+            self.json_response({"success": True, "link": link})
+            return
+        if path == "/api/reset_password" and method == "POST":
+            token = (body.get("token") or "").strip()
+            newp = (body.get("new_password") or "").strip()
+            info = RESET_TOKENS.get(token)
+            import time
+            if not info or info.get("exp",0) < time.time():
+                self.json_response({"error": "invalid_token"}, 400)
+                return
+            RESET_TOKENS.pop(token, None)
+            ADMIN_PASS = newp or ADMIN_PASS
+            try:
+                with open(ADMIN_FILE, "w", encoding="utf-8") as f:
+                    json.dump({"username": ADMIN_USER, "password": ADMIN_PASS}, f, ensure_ascii=False)
+            except Exception:
+                pass
+            self.json_response({"success": True})
+            return
+        if path == "/api/update_admin" and method == "POST":
+            if not self.get_session_user():
+                self.json_response({"error": "unauthorized"}, 401); return
+            newu = (body.get("username") or "").strip() or ADMIN_USER
+            newp = (body.get("password") or "").strip() or ADMIN_PASS
+            globals()["ADMIN_USER"] = newu
+            globals()["ADMIN_PASS"] = newp
+            try:
+                with open(ADMIN_FILE, "w", encoding="utf-8") as f:
+                    json.dump({"username": ADMIN_USER, "password": ADMIN_PASS}, f, ensure_ascii=False)
+            except Exception:
+                pass
+            self.json_response({"success": True})
+            return
         if path == "/api/projects" and method == "POST":
+            if not self.get_session_user():
+                self.json_response({"error": "unauthorized"}, 401); return
             name = (body.get("name", "") or "").replace("'", "''")
             date = body.get("contract_date", "") or ""
             price = body.get("total_price", 0) or 0
@@ -505,6 +641,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response({"success": True})
             return
         if path.startswith("/api/projects/") and method == "PUT":
+            if not self.get_session_user():
+                self.json_response({"error": "unauthorized"}, 401); return
             pid = int(path.split("/")[-1])
             fields = []
             if "name" in body:
@@ -523,6 +661,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response({"success": True})
             return
         if path.startswith("/api/projects/") and method == "DELETE":
+            if not self.get_session_user():
+                self.json_response({"error": "unauthorized"}, 401); return
             pid = int(path.split("/")[-1])
             ok, err = run_sql(f"DELETE FROM projects WHERE id={pid}")
             if not ok:
@@ -531,6 +671,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response({"success": True})
             return
         if path == "/api/payments" and method == "POST":
+            if not self.get_session_user():
+                self.json_response({"error": "unauthorized"}, 401); return
             project_id = int(body.get("project_id", 0))
             payment_date = body.get("payment_date", "")
             amount = float(body.get("amount", 0))
@@ -541,6 +683,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response({"success": True})
             return
         if path.startswith("/api/payments/") and method == "PUT":
+            if not self.get_session_user():
+                self.json_response({"error": "unauthorized"}, 401); return
             pid = int(path.split("/")[-1])
             fields = []
             if "payment_date" in body:
@@ -557,6 +701,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response({"success": True})
             return
         if path.startswith("/api/payments/") and method == "DELETE":
+            if not self.get_session_user():
+                self.json_response({"error": "unauthorized"}, 401); return
             pid = int(path.split("/")[-1])
             ok, err = run_sql(f"DELETE FROM payments WHERE id={pid}")
             if not ok:

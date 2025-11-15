@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>密码找回</title>
+  <style>
+    body { font-family: Segoe UI, Arial; margin: 40px; }
+    .box { max-width: 420px; margin: 0 auto; }
+    input { width: 100%; padding: 8px; margin: 8px 0; }
+    button { padding: 10px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>忘记密码</h1>
+    <p>通过邮箱找回：<input id="email" value="6690587@qq.com" /></p>
+    <button onclick="send()">发送重置链接</button>
+    <h2>使用重置令牌</h2>
+    <input id="token" placeholder="重置令牌" />
+    <input id="newp" type="password" placeholder="新密码" />
+    <button onclick="reset()">重置密码</button>
+    <p id="msg"></p>
+  </div>
+  <script>
+    async function send(){
+      const email = document.getElementById('email').value;
+      const r = await fetch('/api/forgot_password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email }) });
+      const j = await r.json();
+      if (j.link) document.getElementById('msg').textContent = '已生成重置链接：' + j.link;
+    }
+    async function reset(){
+      const token = document.getElementById('token').value;
+      const newp = document.getElementById('newp').value;
+      const r = await fetch('/api/reset_password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token, new_password: newp }) });
+      if (r.ok) { alert('重置成功'); location.href='login.html' } else { alert('重置失败') }
+    }
+    const params = new URLSearchParams(location.search);
+    const t = params.get('token');
+    if (t) document.getElementById('token').value = t;
+  </script>
+</body>
+</html>

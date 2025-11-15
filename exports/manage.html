@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <h1>公司项目台账管理</h1>
+  <h1>公司项目台账管理 <span style="float:right"><button onclick="openProfile()">个人管理</button> <button onclick="logout()">退出管理</button></span></h1>
   <p><a href="index.html">返回首页</a></p>
   <p><button onclick="downloadAllExcel()">导出全部明细（xlsx）</button></p>
 
@@ -126,6 +126,33 @@
       if (pid) loadPayments(pid);
     }
 
+    async function logout(){
+      await fetch('/api/logout', { method:'POST' });
+      location.href = 'login.html';
+    }
+
+    function openProfile(){
+      document.getElementById('profile_modal').style.display = 'block';
+      loadAdminProfile();
+    }
+    function closeProfile(){
+      document.getElementById('profile_modal').style.display = 'none';
+    }
+    async function loadAdminProfile(){
+      const r = await fetch('/api/admin_profile');
+      if (r.ok){
+        const j = await r.json();
+        document.getElementById('admin_username').value = j.username || '';
+        document.getElementById('admin_password').value = '';
+      }
+    }
+    async function saveAdminProfile(){
+      const username = document.getElementById('admin_username').value;
+      const password = document.getElementById('admin_password').value;
+      const r = await fetch('/api/update_admin', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) });
+      if (r.ok){ alert('保存成功'); closeProfile(); } else { alert('保存失败'); }
+    }
+
     async function savePayment(id) {
       const inputs = document.querySelectorAll(`#payments input[data-id='${id}']`);
       const body = {};
@@ -190,5 +217,19 @@
 
     loadProjects();
   </script>
+
+  <div id="profile_modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.3);">
+    <div style="background:#fff; width:420px; margin:80px auto; padding:16px; border-radius:6px;">
+      <h2>个人管理</h2>
+      <label for="admin_username" style="display:block; margin-top:8px;">管理员帐号</label>
+      <input id="admin_username" style="width:100%; padding:8px; box-sizing:border-box; margin-top:4px;" />
+      <label for="admin_password" style="display:block; margin-top:12px;">密码</label>
+      <input id="admin_password" type="password" style="width:100%; padding:8px; box-sizing:border-box; margin-top:4px;" />
+      <div style="margin-top:12px; text-align:right;">
+        <button onclick="saveAdminProfile()">保存</button>
+        <button onclick="closeProfile()" style="margin-left:8px;">取消</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

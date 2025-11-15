@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>登录</title>
+  <style>
+    body { font-family: Segoe UI, Arial; margin: 40px; }
+    .box { max-width: 360px; margin: 0 auto; }
+    input { width: 100%; padding: 8px; margin: 8px 0; }
+    button { width: 100%; padding: 10px; margin-top: 8px; }
+    .hint { margin-top: 12px; font-size: 12px; }
+  </style>
+  </head>
+<body>
+  <div class="box">
+    <h1>登录管理页面</h1>
+    <label for="username">帐号</label>
+    <input id="username" placeholder="请输入帐号" />
+    <label for="password">密码</label>
+    <input id="password" type="password" placeholder="请输入密码" />
+    <button onclick="login()">登录</button>
+    <div class="hint">
+      <a href="reset.html">忘记密码找回</a>
+      <div style="margin-top:8px"><button onclick="location.href='index.html'">返回首页</button></div>
+    </div>
+  </div>
+  <script>
+    async function login(){
+      const u = document.getElementById('username').value;
+      const p = document.getElementById('password').value;
+      const r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username:u, password:p }) });
+      if (r.ok) { location.href = 'manage.html' } else { alert('登录失败') }
+    }
+  </script>
+</body>
+</html>
